@@ -22,6 +22,7 @@
 #include "stm32f1xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "synth.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -183,7 +184,7 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
-
+  scan_mask = ScanKey();
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */
@@ -201,6 +202,27 @@ void SysTick_Handler(void)
 /**
   * @brief This function handles TIM2 global interrupt.
   */
+void TIM2_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM2_IRQn 0 */
+
+  /* USER CODE END TIM2_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim2);
+  /* USER CODE BEGIN TIM2_IRQn 1 */
+  uint32_t dac_value = 0;
+
+  for (int i = 0; i < VOICE_COUNT; i++)
+  {
+	volatile Voice *voice = &voices[i];
+	if (voice->key == -1) continue;
+	voice->phase += voice->angle;
+    dac_value += CurType(voice->phase);
+  }
+  //TIM2->CCR4 = sin_arr[phase >> 24];
+  TIM2->CCR4 = dac_value;
+  //__HAL_TIM_CLEAR_FLAG(&htim2, TIM_FLAG_UPDATE);
+  /* USER CODE END TIM2_IRQn 1 */
+}
 
 /* USER CODE BEGIN 1 */
 /* USER CODE END 1 */

@@ -21,12 +21,12 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <math.h>
+#include "synth.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-typedef float DACVal_t;
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -36,13 +36,15 @@ typedef float DACVal_t;
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-#define SIN_SIZE 256
+
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+
 TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
+/*
 uint8_t sin_arr[SIN_SIZE];
 uint32_t step;
 uint32_t phase = 0;
@@ -61,8 +63,7 @@ GPIO_t pin_cols[4] = {{GPIOA, GPIO_PIN_4}, {GPIOA, GPIO_PIN_5}, {GPIOA, GPIO_PIN
 GPIO_t pin_rows[6] = {{GPIOB, GPIO_PIN_0}, {GPIOB, GPIO_PIN_1},
 		              {GPIOB, GPIO_PIN_12}, {GPIOB, GPIO_PIN_13},
 					  {GPIOB, GPIO_PIN_14}, {GPIOB, GPIO_PIN_15}};
-
-//uint32_t freq_to_pin
+*/
 
 /* USER CODE END PV */
 
@@ -76,14 +77,20 @@ static void MX_TIM2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+/*
 static uint8_t WaveSine(uint32_t phase) {return (uint8_t)sin_arr[phase >> 24];}
 static uint8_t WaveSquare(uint32_t phase) {return (uint8_t)((phase >> 24) > 127 ? 1 : 0);}
 
 typedef uint8_t (*fn)(uint32_t phase);
 static fn CurType = WaveSine;
 
-static uint8_t ScanKey()
+typedef struct
+{
+  uint8_t freq;
+  bool is_pressed;
+} Voice;
+
+static uint32_t ScanKey()
 {
 	uint32_t mask = 0;
 	for (int c = 0; c < 4; c++)
@@ -100,12 +107,7 @@ static uint8_t ScanKey()
 	}
 	for (int i = 0; i < 4; i++)
 	        HAL_GPIO_WritePin(pin_cols[i].port, pin_cols[i].pin, GPIO_PIN_RESET);
-	uint8_t result = 25;
-	for (int i = 0; i < 24; i++)
-	{
-		if (mask >> i == 1) result = i;
-	}
-	return result;
+	return mask;
 }
 
 void TIM2_IRQHandler(void)
@@ -120,6 +122,7 @@ static void CalculateStep(const float freq)
 {
   step = (uint32_t)(4294967296ULL / 35156 * freq);
 }
+*/
 /* USER CODE END 0 */
 
 /**
@@ -150,12 +153,6 @@ int main(void)
     HAL_GPIO_TogglePin(GPIOC, led.Pin);
     HAL_Delay(100);
   }
-
-  CalculateStep(freqs[7]);
-  for (int i = 0; i < 256; i++)
-  {
-    sin_arr[i] = (uint8_t)(128 + 127 * sinf(2.0f * M_PI * i / 256.0f));
-  }
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -169,18 +166,25 @@ int main(void)
   MX_GPIO_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
+  SynthInit();
   __HAL_TIM_ENABLE_IT(&htim2, TIM_IT_UPDATE);
   HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_4);
+  static uint32_t prev = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
   while (1)
   {
+	uint32_t current_mask = scan_mask;
+	uint32_t ch = current_mask ^ prev;
+    for (int8_t i = 0; i < 24; i++)
+    {
+      if (ch >> i & 1U) current_mask >> i & 1U ? KeyPress(i) : KeyUp(i);
+    }
+    prev = current_mask;
     /* USER CODE END WHILE */
-	uint8_t key = ScanKey();
-	CalculateStep(freqs[key]);
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
